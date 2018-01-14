@@ -150,6 +150,14 @@ extern char *_rl_strpbrk PARAMS((const char *, const char *));
 #  define SWAP(s, e)  do { int t; t = s; s = e; e = t; } while (0)
 #endif
 
+#if defined (_WIN32)
+#define WAIT_FOR_INPUT 200	/* milliseconds to suspend maximally
+ 				   when waiting for input */
+#define FOR_INPUT	1	/* flags for open state of the console  */
+#define FOR_OUTPUT	2
+#define INITIALIZED	4
+#endif	/* _WIN32  */
+
 /* CONFIGURATION SECTION */
 #include "rlconf.h"
 

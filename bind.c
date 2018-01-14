@@ -53,6 +53,11 @@
 extern int errno;
 #endif /* !errno */
 
+#ifdef _WIN32
+#include <sys/stat.h>
+#include <io.h>
+#endif
+
 #include "posixstat.h"
 
 /* System-specific feature definitions and include files. */
