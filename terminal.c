@@ -67,6 +67,10 @@ extern int	rlScreenMax;
 # include <pc.h>
 #endif
 
+#ifdef __MSDOS__
+#  include <pc.h>
+#endif
+
 #include "rltty.h"
 #include "tcap.h"
 
@@ -89,13 +93,14 @@ static void _win_get_screensize PARAMS((int *, int *));
 static void _emx_get_screensize PARAMS((int *, int *));
 #endif
 
-#define CUSTOM_REDISPLAY_FUNC() (rl_redisplay_function != rl_redisplay)
-#define CUSTOM_INPUT_FUNC() (rl_getc_function != rl_getc)
-
-/*  If the calling application sets this to a non-zero value, readline will
-    use the $LINES and $COLUMNS environment variables to set its idea of the
-    window size before interrogating the kernel. */
+/* If the calling application sets this to a non-zero value, readline will
+   use the $LINES and $COLUMNS environment variables to set its idea of the
+   window size before interrogating the kernel. */
 int rl_prefer_env_winsize = 0;
+
+/* If this is non-zero, readline will set LINES and COLUMNS in the
+   environment when it handles SIGWINCH. */
+int rl_change_environment = 1;
 
 /* **************************************************************** */
 /*								    */
@@ -281,7 +286,10 @@ _rl_get_screen_size (tty, ignore_env)
       if (_rl_screenwidth <= 0)
         _rl_screenwidth = wc;
 
-#if !defined (__DJGPP__) && !defined(_WIN32)
+#if defined (__DJGPP__) || defined(_WIN32)
+      if (_rl_screenwidth <= 0)
+	_rl_screenwidth = ScreenCols ();
+#else
       if (_rl_screenwidth <= 0 && term_string_buffer)
 	_rl_screenwidth = tgetnum ("co");
 #endif
@@ -297,7 +305,10 @@ _rl_get_screen_size (tty, ignore_env)
       if (_rl_screenheight <= 0)
         _rl_screenheight = wr;
 
-#if !defined (__DJGPP__) && !defined(_WIN32)
+#if defined (__DJGPP__) || defined(_WIN32)
+      if (_rl_screenheight <= 0)
+	_rl_screenheight = ScreenRows ();
+#else
       if (_rl_screenheight <= 0 && term_string_buffer)
 	_rl_screenheight = tgetnum ("li");
 #endif
@@ -313,7 +324,8 @@ _rl_get_screen_size (tty, ignore_env)
   /* If we're being compiled as part of bash, set the environment
      variables $LINES and $COLUMNS to new values.  Otherwise, just
      do a pair of putenv () or setenv () calls. */
-  sh_set_lines_and_columns (_rl_screenheight, _rl_screenwidth);
+  if (rl_change_environment)
+    sh_set_lines_and_columns (_rl_screenheight, _rl_screenwidth);
 
   if (_rl_term_autowrap == 0)
     _rl_screenwidth--;
@@ -363,7 +375,13 @@ rl_reset_screen_size ()
 {
   _rl_get_screen_size (fileno (rl_instream), 0);
 }
-     
+
+void
+_rl_sigwinch_resize_terminal ()
+{
+  _rl_get_screen_size (fileno (rl_instream), 1);
+}
+	
 void
 rl_resize_terminal ()
 {
@@ -592,6 +610,7 @@ _rl_init_terminal_io (terminal_name)
   term_has_meta = tgetflag ("km") != 0;
   if (term_has_meta == 0)
     _rl_term_mm = _rl_term_mo = (char *)NULL;
+#endif /* !__MSDOS__ */
 
 #endif /* !__MSDOS__ */
 
@@ -737,7 +756,11 @@ rl_ding ()
 #else
 	  if (_rl_visible_bell)
 	    {
+#ifdef __DJGPP__
+	      ScreenVisualBell ();
+#else
 	      tputs (_rl_visible_bell, 1, _rl_output_character_function);
+#endif
 	      break;
 	    }
 #endif
@@ -832,12 +855,29 @@ rl_ding ()
 /*								    */
 /* **************************************************************** */
 
+static int enabled_meta = 0;	/* flag indicating we enabled meta mode */
+
 void
 _rl_enable_meta_key ()
 {
 #if !defined (__DJGPP__) && !defined (_WIN32)
   if (term_has_meta && _rl_term_mm)
-    tputs (_rl_term_mm, 1, _rl_output_character_function);
+    {
+      tputs (_rl_term_mm, 1, _rl_output_character_function);
+      enabled_meta = 1;
+    }
+#endif
+}
+
+void
+_rl_disable_meta_key ()
+{
+#if !defined (__DJGPP__)
+  if (term_has_meta && _rl_term_mo && enabled_meta)
+    {
+      tputs (_rl_term_mo, 1, _rl_output_character_function);
+      enabled_meta = 0;
+    }
 #endif
 }
 
