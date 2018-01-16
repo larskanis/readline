@@ -1,6 +1,6 @@
 /* signals.c -- signal handling support for readline. */
 
-/* Copyright (C) 1987-2011 Free Software Foundation, Inc.
+/* Copyright (C) 1987-2016 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
    for reading lines of text with interactive input and history editing.      
@@ -221,15 +221,31 @@ _rl_handle_signal (sig)
     case SIGINT:
       _rl_reset_completion_state ();
       rl_free_line_state ();
+#if defined (READLINE_CALLBACKS)
+      rl_callback_sigcleanup ();
+#endif
+
       /* FALLTHROUGH */
 
-    case SIGTERM:
-    case SIGHUP:
 #if defined (SIGTSTP)
     case SIGTSTP:
-    case SIGTTOU:
     case SIGTTIN:
+#  if defined (HAVE_POSIX_SIGNALS)
+      /* Block SIGTTOU so we can restore the terminal settings to something
+	 sane without stopping on SIGTTOU if we have been placed into the
+	 background.  Even trying to get the current terminal pgrp with
+	 tcgetpgrp() will generate SIGTTOU, so we don't bother.  Don't bother
+	 doing this if we've been stopped on SIGTTOU; it's aready too late. */
+      sigemptyset (&set);
+      sigaddset (&set, SIGTTOU);
+      sigprocmask (SIG_BLOCK, &set, (sigset_t *)NULL);
+#  endif
+    case SIGTTOU:
 #endif /* SIGTSTP */
+    case SIGTERM:
+#if defined (SIGHUP)
+    case SIGHUP:
+#endif
 #if defined (SIGALRM)
     case SIGALRM:
 #endif
@@ -240,6 +256,10 @@ _rl_handle_signal (sig)
       rl_cleanup_after_signal ();
 
 #if defined (HAVE_POSIX_SIGNALS)
+      /* Unblock SIGTTOU blocked above */
+      if (sig == SIGTTIN || sig == SIGTSTP)
+	sigprocmask (SIG_UNBLOCK, &set, (sigset_t *)NULL);
+
       sigemptyset (&set);
       sigprocmask (SIG_BLOCK, (sigset_t *)NULL, &set);
       sigdelset (&set, sig);
@@ -405,7 +425,9 @@ rl_set_signals ()
 
       sigaddset (&bset, SIGINT);
       sigaddset (&bset, SIGTERM);
+#if defined (SIGHUP)
       sigaddset (&bset, SIGHUP);
+#endif
 #if defined (SIGQUIT)
       sigaddset (&bset, SIGQUIT);
 #endif
@@ -434,7 +456,9 @@ rl_set_signals ()
 
       rl_maybe_set_sighandler (SIGINT, rl_signal_handler, &old_int);
       rl_maybe_set_sighandler (SIGTERM, rl_signal_handler, &old_term);
+#if defined (SIGHUP)
       rl_maybe_set_sighandler (SIGHUP, rl_signal_handler, &old_hup);
+#endif
 #if defined (SIGQUIT)
       rl_maybe_set_sighandler (SIGQUIT, rl_signal_handler, &old_quit);
 #endif
@@ -499,7 +523,9 @@ rl_clear_signals ()
 	 overhead */
       rl_maybe_restore_sighandler (SIGINT, &old_int);
       rl_maybe_restore_sighandler (SIGTERM, &old_term);
+#if defined (SIGHUP)
       rl_maybe_restore_sighandler (SIGHUP, &old_hup);
+#endif
 #if defined (SIGQUIT)
       rl_maybe_restore_sighandler (SIGQUIT, &old_quit);
 #endif
@@ -574,6 +600,12 @@ rl_free_line_state ()
   _rl_kill_kbd_macro ();
   rl_clear_message ();
   _rl_reset_argument ();
+}
+
+int
+rl_pending_signal ()
+{
+  return (_rl_caught_signal);
 }
 
 #if !defined (_WIN32)
