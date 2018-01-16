@@ -3,7 +3,7 @@
 /* Copyright (C) 1996-2009 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.
+   for reading lines of text with interactive input and history editing.      
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -78,7 +78,7 @@ extern int	rlScreenMax;
 #include "rlshell.h"
 #include "xmalloc.h"
 
-#if defined (__MINGW32__) || defined(_WIN32)
+#if defined (__MINGW32__)
 #  include <windows.h>
 #  include <wincon.h>
 
@@ -213,7 +213,7 @@ _emx_get_screensize (swp, shp)
 }
 #endif
 
-#if defined (__MINGW32__) || defined(_WIN32)
+#if defined (__MINGW32__)
 static void
 _win_get_screensize (swp, shp)
      int *swp, *shp;
@@ -258,7 +258,7 @@ _rl_get_screen_size (tty, ignore_env)
 
 #if defined (__EMX__)
   _emx_get_screensize (&wc, &wr);
-#elif defined (__MINGW32__) || defined(_WIN32)
+#elif defined (__MINGW32__)
   _win_get_screensize (&wc, &wr);
 #endif
 
@@ -363,7 +363,7 @@ rl_reset_screen_size ()
 {
   _rl_get_screen_size (fileno (rl_instream), 0);
 }
-
+     
 void
 rl_resize_terminal ()
 {

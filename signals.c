@@ -86,6 +86,9 @@ static void rl_maybe_set_sighandler PARAMS((int, SigHandler *, sighandler_cxt *)
 static RETSIGTYPE rl_signal_handler PARAMS((int));
 static RETSIGTYPE _rl_handle_signal PARAMS((int));
      
+static RETSIGTYPE rl_signal_handler PARAMS((int));
+static RETSIGTYPE _rl_handle_signal PARAMS((int));
+     
 /* Exported variables for use by applications. */
 
 /* If non-zero, readline will install its own signal handlers for
@@ -722,3 +725,160 @@ rl_clear_signals ()
 
 #endif	/* _WIN32  */
 #endif  /* HANDLE_SIGNALS */
+
+/* **************************************************************** */
+/*								    */
+/*			   SIGINT Management			    */
+/*								    */
+/* **************************************************************** */
+
+#if defined (HAVE_POSIX_SIGNALS)
+static sigset_t sigint_set, sigint_oset;
+static sigset_t sigwinch_set, sigwinch_oset;
+#else /* !HAVE_POSIX_SIGNALS */
+#  if defined (HAVE_BSD_SIGNALS)
+static int sigint_oldmask;
+static int sigwinch_oldmask;
+#  endif /* HAVE_BSD_SIGNALS */
+#endif /* !HAVE_POSIX_SIGNALS */
+
+static int sigint_blocked;
+static int sigwinch_blocked;
+
+/* Cause SIGINT to not be delivered until the corresponding call to
+   release_sigint(). */
+void
+_rl_block_sigint ()
+{
+  if (sigint_blocked)
+    return;
+
+#if defined (HAVE_POSIX_SIGNALS)
+  sigemptyset (&sigint_set);
+  sigemptyset (&sigint_oset);
+  sigaddset (&sigint_set, SIGINT);
+  sigprocmask (SIG_BLOCK, &sigint_set, &sigint_oset);
+#else /* !HAVE_POSIX_SIGNALS */
+#  if defined (HAVE_BSD_SIGNALS)
+  sigint_oldmask = sigblock (sigmask (SIGINT));
+#  else /* !HAVE_BSD_SIGNALS */
+#    if defined (HAVE_USG_SIGHOLD)
+  sighold (SIGINT);
+#    endif /* HAVE_USG_SIGHOLD */
+#  endif /* !HAVE_BSD_SIGNALS */
+#endif /* !HAVE_POSIX_SIGNALS */
+
+  sigint_blocked = 1;
+}
+
+/* Allow SIGINT to be delivered. */
+void
+_rl_release_sigint ()
+{
+  if (sigint_blocked == 0)
+    return;
+
+#if defined (HAVE_POSIX_SIGNALS)
+  sigprocmask (SIG_SETMASK, &sigint_oset, (sigset_t *)NULL);
+#else
+#  if defined (HAVE_BSD_SIGNALS)
+  sigsetmask (sigint_oldmask);
+#  else /* !HAVE_BSD_SIGNALS */
+#    if defined (HAVE_USG_SIGHOLD)
+  sigrelse (SIGINT);
+#    endif /* HAVE_USG_SIGHOLD */
+#  endif /* !HAVE_BSD_SIGNALS */
+#endif /* !HAVE_POSIX_SIGNALS */
+
+  sigint_blocked = 0;
+}
+
+/* Cause SIGWINCH to not be delivered until the corresponding call to
+   release_sigwinch(). */
+void
+_rl_block_sigwinch ()
+{
+  if (sigwinch_blocked)
+    return;
+
+#if defined (HAVE_POSIX_SIGNALS)
+  sigemptyset (&sigwinch_set);
+  sigemptyset (&sigwinch_oset);
+  sigaddset (&sigwinch_set, SIGWINCH);
+  sigprocmask (SIG_BLOCK, &sigwinch_set, &sigwinch_oset);
+#else /* !HAVE_POSIX_SIGNALS */
+#  if defined (HAVE_BSD_SIGNALS)
+  sigwinch_oldmask = sigblock (sigmask (SIGWINCH));
+#  else /* !HAVE_BSD_SIGNALS */
+#    if defined (HAVE_USG_SIGHOLD)
+  sighold (SIGWINCH);
+#    endif /* HAVE_USG_SIGHOLD */
+#  endif /* !HAVE_BSD_SIGNALS */
+#endif /* !HAVE_POSIX_SIGNALS */
+
+  sigwinch_blocked = 1;
+}
+
+/* Allow SIGWINCH to be delivered. */
+void
+_rl_release_sigwinch ()
+{
+  if (sigwinch_blocked == 0)
+    return;
+
+#if defined (HAVE_POSIX_SIGNALS)
+  sigprocmask (SIG_SETMASK, &sigwinch_oset, (sigset_t *)NULL);
+#else
+#  if defined (HAVE_BSD_SIGNALS)
+  sigsetmask (sigwinch_oldmask);
+#  else /* !HAVE_BSD_SIGNALS */
+#    if defined (HAVE_USG_SIGHOLD)
+  sigrelse (SIGWINCH);
+#    endif /* HAVE_USG_SIGHOLD */
+#  endif /* !HAVE_BSD_SIGNALS */
+#endif /* !HAVE_POSIX_SIGNALS */
+
+  sigwinch_blocked = 0;
+}
+
+/* **************************************************************** */
+/*								    */
+/*		Echoing special control characters		    */
+/*								    */
+/* **************************************************************** */
+void
+rl_echo_signal_char (sig)
+     int sig;
+{
+  char cstr[3];
+  int cslen, c;
+
+  if (_rl_echoctl == 0 || _rl_echo_control_chars == 0)
+    return;
+
+  switch (sig)
+    {
+    case SIGINT:  c = _rl_intr_char; break;
+#if defined (SIGQUIT)
+    case SIGQUIT: c = _rl_quit_char; break;
+#endif
+#if defined (SIGTSTP)
+    case SIGTSTP: c = _rl_susp_char; break;
+#endif
+    default: return;
+    }
+
+  if (CTRL_CHAR (c) || c == RUBOUT)
+    {
+      cstr[0] = '^';
+      cstr[1] = CTRL_CHAR (c) ? UNCTRL (c) : '?';
+      cstr[cslen = 2] = '\0';
+    }
+  else
+    {
+      cstr[0] = c;
+      cstr[cslen = 1] = '\0';
+    }
+
+  _rl_output_some_chars (cstr, cslen);
+}

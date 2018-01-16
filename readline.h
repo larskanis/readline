@@ -3,7 +3,7 @@
 /* Copyright (C) 1987-2011 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.
+   for reading lines of text with interactive input and history editing.      
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -39,9 +39,9 @@ extern "C" {
 #endif
 
 /* Hex-encoded Readline version number. */
-#define RL_READLINE_VERSION	0x0500		/* Readline 5.0 */
-#define RL_VERSION_MAJOR	5
-#define RL_VERSION_MINOR	0
+#define RL_READLINE_VERSION	0x0602		/* Readline 6.2 */
+#define RL_VERSION_MAJOR	6
+#define RL_VERSION_MINOR	2
 
 /* Readline data structures. */
 
@@ -307,6 +307,7 @@ extern int rl_bind_keyseq_in_map PARAMS((const char *, rl_command_func_t *, Keym
 extern int rl_bind_keyseq_if_unbound PARAMS((const char *, rl_command_func_t *));
 extern int rl_bind_keyseq_if_unbound_in_map PARAMS((const char *, rl_command_func_t *, Keymap));
 extern int rl_generic_bind PARAMS((int, const char *, char *, Keymap));
+
 extern char *rl_variable_value PARAMS((const char *));
 extern int rl_variable_bind PARAMS((const char *, const char *));
 
@@ -432,7 +433,7 @@ extern void rl_cleanup_after_signal PARAMS((void));
 extern void rl_reset_after_signal PARAMS((void));
 extern void rl_free_line_state PARAMS((void));
 
-extern void rl_echo_signal_char PARAMS((int));
+extern void rl_echo_signal_char PARAMS((int)); 
 
 extern int rl_set_paren_blink_timeout PARAMS((int));
 
@@ -611,7 +612,7 @@ extern rl_compentry_func_t *rl_completion_entry_function;
 
 /* Optional generator for menu completion.  Default is
    rl_completion_entry_function (rl_filename_completion_function). */
-extern rl_compentry_func_t *rl_menu_completion_entry_function;
+ extern rl_compentry_func_t *rl_menu_completion_entry_function;
 
 /* If rl_ignore_some_completions_function is non-NULL it is the address
    of a function to call after all of the possible matches have been
@@ -748,6 +749,9 @@ extern int rl_completion_type;
 /* Set to the last key used to invoke one of the completion functions */
 extern int rl_completion_invoking_key;
 
+/* Set to the last key used to invoke one of the completion functions */
+extern int rl_completion_invoking_key;
+
 /* Up to this many items will be displayed in response to a
    possible-completions call.  After that, we ask the user if she
    is sure she wants to see them all.  The default value is 100. */
@@ -775,6 +779,9 @@ extern int rl_completion_found_quote;
 extern int rl_completion_suppress_quote;
 /* If non-zero, readline will sort the completion matches.  On by default. */
 extern int rl_sort_completion_match;
+
+/* If non-zero, readline will sort the completion matches.  On by default. */
+extern int rl_sort_completion_matches;
 
 /* If non-zero, a slash will be appended to completed filenames that are
    symbolic links to directory names, subject to the value of the

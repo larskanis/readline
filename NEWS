@@ -1,55 +1,19 @@
-This is a terse description of the new features added to readline-5.0 since
-the release of readline-4.3.
+This is a terse description of the new features added to readline-6.2 since
+the release of readline-6.1.
 
-1.  New Features in Readline
+a.  The history library does not try to write the history filename in the
+    current directory if $HOME is unset.  This closes a potential security
+    problem if the application does not specify a history filename.
 
-a.  History expansion has a new `a' modifier equivalent to the `g' modifier
-    for compatibility with the BSD csh.
+b.  New bindable variable `completion-display-width' to set the number of
+    columns used when displaying completions.
 
-b.  History expansion has a new `G' modifier equivalent to the BSD csh `g'
-    modifier, which performs a substitution once per word.
+c.  New bindable variable `completion-case-map' to cause case-insensitive
+    completion to treat `-' and `_' as identical.
 
-c.  All non-incremental search operations may now undo the operation of
-    replacing the current line with the history line.
+d.  There are new bindable vi-mode command names to avoid readline's case-
+    insensitive matching not allowing them to be bound separately.
 
-d.  The text inserted by an `a' command in vi mode can be reinserted with
-    `.'.
-
-e.  New bindable variable, `show-all-if-unmodified'.  If set, the readline
-    completer will list possible completions immediately if there is more
-    than one completion and partial completion cannot be performed.
-
-f.  There is a new application-callable `free_history_entry()' function.
-
-g.  History list entries now contain timestamp information; the history file
-    functions know how to read and write timestamp information associated
-    with each entry.
-
-h.  Four new key binding functions have been added:
-
-	rl_bind_key_if_unbound()
-	rl_bind_key_if_unbound_in_map()
-	rl_bind_keyseq_if_unbound()
-	rl_bind_keyseq_if_unbound_in_map()
-
-i.  New application variable, rl_completion_quote_character, set to any
-    quote character readline finds before it calls the application completion
-    function.
-
-j.  New application variable, rl_completion_suppress_quote, settable by an   
-    application completion function.  If set to non-zero, readline does not
-    attempt to append a closing quote to a completed word.
-    
-k.  New application variable, rl_completion_found_quote, set to a non-zero
-    value if readline determines that the word to be completed is quoted.
-    Set before readline calls any application completion function.
-
-l.  New function hook, rl_completion_word_break_hook, called when readline
-    needs to break a line into words when completion is attempted.  Allows
-    the word break characters to vary based on position in the line.
-
-m.  New bindable command: unix-filename-rubout.  Does the same thing as
-    unix-word-rubout, but adds `/' to the set of word delimiters.
-
-n.  When listing completions, directories have a `/' appended if the
-    `mark-directories' option has been enabled.
+e.  New bindable variable `menu-complete-display-prefix' causes the menu
+    completion code to display the common prefix of the possible completions
+    before cycling through the list, instead of after.

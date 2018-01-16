@@ -2,7 +2,7 @@
 
 /* Copyright (C) 1987-2009 Free Software Foundation, Inc.
 
-   This file is part of the GNU Readline Library (Readline), a library
+   This file is part of the GNU Readline Library (Readline), a library    
    for reading lines of text with interactive input and history editing.
 
    Readline is free software: you can redistribute it and/or modify
@@ -71,10 +71,6 @@ extern int rlScreenMax;
 extern char *strchr (), *strrchr ();
 #endif /* !strchr && !__STDC__ */
 
-#if defined (HACK_TERMCAP_MOTION)
-extern char *_rl_term_forward_char;
-#endif
-
 static void update_line PARAMS((char *, char *, int, int, int, int));
 static void space_to_eol PARAMS((int));
 static void delete_chars PARAMS((int));
@@ -130,7 +126,7 @@ static int _rl_col_width PARAMS((const char *, int, int, int));
    invisible characters.  XXX - might need to take `modmark' into account. */
 #define PROMPT_ENDING_INDEX \
   ((MB_CUR_MAX > 1 && rl_byte_oriented == 0) ? prompt_physical_chars : prompt_last_invisible+1)
-
+  
 
 /* **************************************************************** */
 /*								    */
@@ -1017,7 +1013,7 @@ rl_redisplay ()
 			_rl_last_c_pos != o_cpos &&
 			_rl_last_c_pos > (prompt_last_invisible - _rl_screenwidth - prompt_invis_chars_first_line))
 		_rl_last_c_pos -= (wrap_offset-prompt_invis_chars_first_line);
-
+		  
 	      /* If this is the line with the prompt, we might need to
 		 compensate for invisible characters in the new line. Do
 		 this only if there is not more than one new line (which
@@ -2032,41 +2028,31 @@ _rl_move_cursor_relative (new, data)
 	 sequence telling the terminal to move forward one character.
 	 That kind of control is for people who don't know what the
 	 data is underneath the cursor. */
-#if defined (HACK_TERMCAP_MOTION)
-      if (_rl_term_forward_char)
+
+      /* However, we need a handle on where the current display position is
+	 in the buffer for the immediately preceding comment to be true.
+	 In multibyte locales, we don't currently have that info available.
+	 Without it, we don't know where the data we have to display begins
+	 in the buffer and we have to go back to the beginning of the screen
+	 line.  In this case, we can use the terminal sequence to move forward
+	 if it's available. */
+      if (MB_CUR_MAX > 1 && rl_byte_oriented == 0)
 	{
-	  if (MB_CUR_MAX > 1 && rl_byte_oriented == 0)
+	  if (_rl_term_forward_char)
 	    {
-	      int width;
-	      width = _rl_col_width (data, _rl_last_c_pos, new);
-	      for (i = 0; i < width; i++)
-		tputs (_rl_term_forward_char, 1, _rl_output_character_function);
+	      for (i = cpos; i < dpos; i++)
+	        tputs (_rl_term_forward_char, 1, _rl_output_character_function);
 	    }
 	  else
 	    {
-	      for (i = _rl_last_c_pos; i < new; i++)
-		tputs (_rl_term_forward_char, 1, _rl_output_character_function);
+	      tputs (_rl_term_cr, 1, _rl_output_character_function);
+	      for (i = 0; i < new; i++)
+		putc (data[i], rl_outstream);
 	    }
 	}
-      else if (MB_CUR_MAX > 1 && rl_byte_oriented == 0)
-	{
-	  tputs (_rl_term_cr, 1, _rl_output_character_function);
-	  for (i = 0; i < new; i++)
-	    putc (data[i], rl_outstream);
-	}
       else
-	for (i = _rl_last_c_pos; i < new; i++)
+	for (i = cpos; i < new; i++)
 	  putc (data[i], rl_outstream);
-
-#else /* !HACK_TERMCAP_MOTION */
-
-      if (MB_CUR_MAX > 1 && rl_byte_oriented == 0)
-	_rl_backspace (_rl_last_c_pos - _rl_col_width (data, 0, new, 1));
-      else
-	for (i = _rl_last_c_pos; i < new; i++)
-	  putc (data[i], rl_outstream);
-
-#endif /* !HACK_TERMCAP_MOTION */
     }
 
 #if defined (HANDLE_MULTIBYTE)
@@ -2079,7 +2065,6 @@ _rl_move_cursor_relative (new, data)
     _rl_backspace (cpos - dpos);
 
   _rl_last_c_pos = dpos;
-#endif
 }
 
 /* PWP: move the cursor up or down. */
@@ -2255,7 +2240,7 @@ rl_message (format, arg1, arg2)
   local_prompt_prefix = (char *)NULL;
   local_prompt_len = local_prompt ? strlen (local_prompt) : 0;
   (*rl_redisplay_function) ();
-
+      
   return 0;
 }
 #endif /* !USE_VARARGS */
@@ -2355,7 +2340,7 @@ _rl_make_prompt_for_search (pchar)
 	strcpy (pmt, p);
       pmt[len] = pchar;
       pmt[len+1] = '\0';
-    }
+    }  
 
   /* will be overwritten by expand_prompt, called from rl_message */
   prompt_physical_chars = saved_physical_chars + 1;
@@ -2610,6 +2595,8 @@ _rl_redisplay_after_sigwinch ()
      screen line. */
   if (_rl_term_cr)
     {
+      _rl_move_vert (_rl_vis_botlin);
+
 #if defined (_WIN32)
       _rl_move_cursor_relative (0, 0);
       space_to_eol (_rl_screenwidth);

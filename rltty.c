@@ -1,25 +1,25 @@
 /* rltty.c -- functions to prepare and restore the terminal for readline's
    use. */
 
-/* Copyright (C) 1992 Free Software Foundation, Inc.
+/* Copyright (C) 1992-2005 Free Software Foundation, Inc.
 
-   This file is part of the GNU Readline Library, a library for
-   reading lines of text with interactive input and history editing.
+   This file is part of the GNU Readline Library (Readline), a library
+   for reading lines of text with interactive input and history editing.      
 
-   The GNU Readline Library is free software; you can redistribute it
-   and/or modify it under the terms of the GNU General Public License
-   as published by the Free Software Foundation; either version 2, or
+   Readline is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
 
-   The GNU Readline Library is distributed in the hope that it will be
-   useful, but WITHOUT ANY WARRANTY; without even the implied warranty
-   of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   Readline is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
 
-   The GNU General Public License is often shipped with GNU software, and
-   is generally kept in a file called COPYING or LICENSE.  If you do not
-   have a copy of the license, write to the Free Software Foundation,
-   59 Temple Place, Suite 330, Boston, MA 02111 USA. */
+   You should have received a copy of the GNU General Public License
+   along with Readline.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #define READLINE_LIBRARY
 
 #if defined (HAVE_CONFIG_H)
@@ -64,8 +64,6 @@ rl_voidfunc_t *rl_deprep_term_function = rl_deprep_terminal;
 static void set_winsize PARAMS((int));
 
 #if !defined (_WIN32)
-/* **************************************************************** */
-/*								    */
 /*		      Saving and Restoring the TTY	    	    */
 /*								    */
 /* **************************************************************** */
@@ -652,7 +650,7 @@ rl_prep_terminal (meta_flag)
       /* If editing in vi mode, make sure we set the bindings in the
 	 insertion keymap no matter what keymap we ended up in. */
       if (rl_editing_mode == vi_mode)
-	_rl_bind_tty_special_chars (vi_insertion_keymap, tio);
+	_rl_bind_tty_special_chars (vi_insertion_keymap, tio);	
       else
 #endif
 	_rl_bind_tty_special_chars (_rl_keymap, tio);
@@ -925,18 +923,18 @@ rltty_set_default_bindings (kmap)
     char buf[40]; strcpy(buf,"set bell-style none");
     rl_parse_and_bind(buf);
   }
-  rl_set_key ("\\M-\\ø&", rl_get_previous_history, kmap);
-  rl_set_key ("\\M-\\ø(", rl_get_next_history, kmap);
-  rl_set_key ("\\M-\\ø'", rl_forward, kmap);
-  rl_set_key ("\\M-\\ø%", rl_backward, kmap);
+  rl_set_key ("\\M-\\ï¿½&", rl_get_previous_history, kmap);
+  rl_set_key ("\\M-\\ï¿½(", rl_get_next_history, kmap);
+  rl_set_key ("\\M-\\ï¿½'", rl_forward, kmap);
+  rl_set_key ("\\M-\\ï¿½%", rl_backward, kmap);
 
-  rl_set_key ("\\M-\\ø$", rl_beg_of_line, kmap);
-  rl_set_key ("\\M-\\ø#", rl_end_of_line, kmap);
-  rl_set_key ("\\M-\\ú%", rl_backward_word, kmap);
-  rl_set_key ("\\M-\\ú'", rl_forward_word, kmap);
+  rl_set_key ("\\M-\\ï¿½$", rl_beg_of_line, kmap);
+  rl_set_key ("\\M-\\ï¿½#", rl_end_of_line, kmap);
+  rl_set_key ("\\M-\\ï¿½%", rl_backward_word, kmap);
+  rl_set_key ("\\M-\\ï¿½'", rl_forward_word, kmap);
 
-  rl_set_key ("\\M-\\ù-", rl_paste_from_clipboard, kmap);
-  rl_set_key ("\\M-\\ø.", rl_delete, kmap);
+  rl_set_key ("\\M-\\ï¿½-", rl_paste_from_clipboard, kmap);
+  rl_set_key ("\\M-\\ï¿½.", rl_delete, kmap);
   rl_set_key ("", rl_unix_word_rubout, kmap);
 }
 

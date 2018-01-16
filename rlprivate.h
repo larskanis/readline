@@ -4,7 +4,7 @@
 /* Copyright (C) 1999-2010 Free Software Foundation, Inc.
 
    This file is part of the GNU Readline Library (Readline), a library
-   for reading lines of text with interactive input and history editing.
+   for reading lines of text with interactive input and history editing.      
 
    Readline is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -72,7 +72,7 @@ typedef struct  __rl_search_context
   int search_string_size;
 
   char **lines;
-  char *allocated_line;
+  char *allocated_line;    
   int hlen;
   int hindex;
 
@@ -151,13 +151,17 @@ typedef struct __rl_vimotion_context
 
 /* fill in more as needed */
 /* `Generic' callback data and functions */
-typedef struct __rl_callback_generic_arg
+typedef struct __rl_callback_generic_arg 
 {
   int count;
   int i1, i2;
   /* add here as needed */
 } _rl_callback_generic_arg;
 
+typedef int _rl_callback_func_t PARAMS((_rl_callback_generic_arg *));
+
+/*************************************************************************
+ *									 *
 typedef int _rl_callback_func_t PARAMS((_rl_callback_generic_arg *));
 
 /*************************************************************************
@@ -236,7 +240,7 @@ extern void _rl_keyseq_cxt_dispose PARAMS((_rl_keyseq_cxt *));
 extern void _rl_keyseq_chain_dispose PARAMS((void));
 
 extern int _rl_dispatch_callback PARAMS((_rl_keyseq_cxt *));
-
+     
 /* callback.c */
 extern _rl_callback_generic_arg *_rl_callback_data_alloc PARAMS((int));
 extern void _rl_callback_data_dispose PARAMS((_rl_callback_generic_arg *));
@@ -331,6 +335,17 @@ extern void _rl_release_sigint PARAMS((void));
 extern void _rl_block_sigwinch PARAMS((void));
 extern void _rl_release_sigwinch PARAMS((void));
 
+/* search.c */
+extern int _rl_nsearch_callback PARAMS((_rl_search_cxt *));
+
+/* signals.c */
+extern void _rl_signal_handler PARAMS((int));
+
+extern void _rl_block_sigint PARAMS((void));
+extern void _rl_release_sigint PARAMS((void));
+extern void _rl_block_sigwinch PARAMS((void));
+extern void _rl_release_sigwinch PARAMS((void));
+
 /* terminal.c */
 extern void _rl_get_screen_size PARAMS((int, int));
 extern int _rl_init_terminal_io PARAMS((const char *));
@@ -402,8 +417,8 @@ extern int _rl_vi_domove_callback PARAMS((_rl_vimotion_cxt *));
  *************************************************************************/
 
 /* bind.c */
-extern const char * const _rl_possible_control_prefixes[3];
-extern const char * const _rl_possible_meta_prefixes[3];
+extern const char * const _rl_possible_control_prefixes[];
+extern const char * const _rl_possible_meta_prefixes[];
 
 /* callback.c */
 extern _rl_callback_func_t *_rl_callback_func;
