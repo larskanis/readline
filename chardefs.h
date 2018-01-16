@@ -52,7 +52,6 @@
 /* Some character stuff. */
 #define control_character_threshold 0x020   /* Smaller than this is control. */
 #define control_character_mask 0x1f	    /* 0x20 - 1 */
-#define control_character_bit 0x40	    /* 0x000000, must be off. */
 
 /* Some character stuff. */
 #define control_character_threshold 0x020   /* Smaller than this is control. */

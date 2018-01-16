@@ -174,10 +174,6 @@ typedef void _rl_sigcleanup_func_t PARAMS((int, void *));
 
 /*************************************************************************
  *									 *
-typedef int _rl_callback_func_t PARAMS((_rl_callback_generic_arg *));
-
-/*************************************************************************
- *									 *
  * Global functions undocumented in texinfo manual and not in readline.h *
  *									 *
  *************************************************************************/
@@ -353,16 +349,6 @@ extern void _rl_internal_char_cleanup PARAMS((void));
 /* rltty.c */
 extern int _rl_disable_tty_signals PARAMS((void));
 extern int _rl_restore_tty_signals PARAMS((void));
-/* search.c */
-extern int _rl_nsearch_callback PARAMS((_rl_search_cxt *));
-
-/* signals.c */
-extern void _rl_signal_handler PARAMS((int));
-
-extern void _rl_block_sigint PARAMS((void));
-extern void _rl_release_sigint PARAMS((void));
-extern void _rl_block_sigwinch PARAMS((void));
-extern void _rl_release_sigwinch PARAMS((void));
 
 /* search.c */
 extern int _rl_nsearch_callback PARAMS((_rl_search_cxt *));

@@ -784,8 +784,6 @@ extern int rl_attempted_completion_over;
    rl_complete_internal; available for use by application completion
    functions. */
 extern int rl_completion_type;
-/* Set to the last key used to invoke one of the completion functions */
-extern int rl_completion_invoking_key;
 
 /* Set to the last key used to invoke one of the completion functions */
 extern int rl_completion_invoking_key;
@@ -815,8 +813,6 @@ extern int rl_completion_found_quote;
    This is set to 0 by rl_complete_internal and may be changed by an
    application-specific completion function. */
 extern int rl_completion_suppress_quote;
-/* If non-zero, readline will sort the completion matches.  On by default. */
-extern int rl_sort_completion_match;
 
 /* If non-zero, readline will sort the completion matches.  On by default. */
 extern int rl_sort_completion_matches;

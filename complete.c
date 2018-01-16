@@ -2285,8 +2285,22 @@ rl_username_completion_function (text, state)
      const char *text;
      int state;
 {
-#if defined (__WIN32__) || defined (__OPENNT)
+#if defined (__OPENNT)
   return (char *)NULL;
+#elif defined (_WIN32)
+  if (GetUserName (user_name, &user_len))
+    {
+      if (namelen == 0 || (!strnicmp (username, user_name, name_len)))
+	{
+	  value = (char *)xmalloc (2 + strlen (user_name));
+	  *value = *text;
+	  strcpy (value + first_char_loc, user_name);
+	  if (first_char == '~')
+	    rl_filename_completion_desired = 1;
+	  return (value);
+	}
+    }
+  return ((char *)NULL);
 #else /* !__WIN32__ && !__OPENNT) */
   static char *username = (char *)NULL;
 #ifndef _WIN32
@@ -2341,21 +2355,6 @@ rl_username_completion_function (text, state)
 
       return (value);
     }
-#else /* _WIN32 */
-  if (GetUserName (user_name, &user_len))
-    {
-      if (namelen == 0 || (!strnicmp (username, user_name, name_len)))
-	{
-	  value = (char *)xmalloc (2 + strlen (user_name));
-	  *value = *text;
-	  strcpy (value + first_char_loc, user_name);
-	  if (first_char == '~')
-	    rl_filename_completion_desired = 1;
-	  return (value);
-	}
-    }
-  return ((char *)NULL);
-#endif /* _WIN32 */
 #endif /* !__WIN32__ && !__OPENNT */
 }
 
@@ -2508,7 +2507,6 @@ rl_filename_completion_function (text, state)
   char tmp[MAX_PATH];
 # define DIR void
 #else
-  struct dirent *entry;
   static DIR *directory = (DIR *)NULL;
 #endif
   static char *filename = (char *)NULL;
@@ -2518,6 +2516,7 @@ rl_filename_completion_function (text, state)
   char *temp, *dentry, *convfn;
   int dirlen, dentlen, convlen;
   int tilde_dirname;
+  struct dirent *entry;
 
   /* If we don't have any state, then do some initialization. */
   if (state == 0)

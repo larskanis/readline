@@ -2340,6 +2340,7 @@ _rl_move_cursor_relative (new, data)
     _rl_backspace (cpos - dpos);
 
   _rl_last_c_pos = dpos;
+#endif
 }
 
 /* PWP: move the cursor up or down. */

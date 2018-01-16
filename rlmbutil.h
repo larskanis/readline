@@ -104,20 +104,6 @@ extern int _rl_read_mbchar PARAMS((char *, int));
 extern int _rl_read_mbstring PARAMS((int, char *, int));
 
 extern int _rl_is_mbchar_matched PARAMS((char *, int, int, char *, int));
-extern uint32_t _rl_char_value PARAMS((char *, int));
-extern int _rl_walphabetic PARAMS((wchar_t));
-
-#define _rl_to_wupper(wc)	(iswlower (wc) ? towupper (wc) : (wc))
-#define _rl_to_wlower(wc)	(iswupper (wc) ? towlower (wc) : (wc))
-
-#define MB_NEXTCHAR(b,s,c,f) \
-	((MB_CUR_MAX > 1 && rl_byte_oriented == 0) \
-		? _rl_find_next_mbchar ((b), (s), (c), (f)) \
-		: ((s) + (c)))
-#define MB_PREVCHAR(b,s,f) \
-	((MB_CUR_MAX > 1 && rl_byte_oriented == 0) \
-		? _rl_find_prev_mbchar ((b), (s), (f)) \
-		: ((s) - 1))
 
 extern wchar_t _rl_char_value PARAMS((char *, int));
 extern int _rl_walphabetic PARAMS((wchar_t));
@@ -207,16 +193,6 @@ _rl_wcwidth (wc)
 #define MB_NEXTCHAR(b,s,c,f)	((s) + (c))
 #define MB_PREVCHAR(b,s,f)	((s) - 1)
 
-
-#define _rl_char_value(buf,ind)	((buf)[(ind)])
-
-#define _rl_walphabetic(c)	(rl_alphabetic (c))
-
-#define _rl_to_wupper(c)	(_rl_to_upper (c))
-#define _rl_to_wlower(c)	(_rl_to_lower (c))
-
-#define MB_NEXTCHAR(b,s,c,f)	((s) + (c))
-#define MB_PREVCHAR(b,s,f)	((s) - 1)
 #define MB_INVALIDCH(x)		(0)
 #define MB_NULLWCH(x)		(0)
 

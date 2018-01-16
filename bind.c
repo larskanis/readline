@@ -947,8 +947,6 @@ _rl_read_init_file (filename, include_level)
   xfree (openname);
 
   RL_CHECK_SIGNALS ();
-
-  RL_CHECK_SIGNALS ();
   if (buffer == 0)
     return (errno);
   

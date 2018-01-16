@@ -611,8 +611,6 @@ _rl_init_terminal_io (terminal_name)
     _rl_term_mm = _rl_term_mo = (char *)NULL;
 #endif /* !__MSDOS__ */
 
-#endif /* !__MSDOS__ */
-
   /* Attempt to find and bind the arrow keys.  Do not override already
      bound keys in an overzealous attempt, however. */
 

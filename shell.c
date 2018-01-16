@@ -226,29 +226,4 @@ sh_unset_nodelay_mode (fd)
   return 0;
 }
 
-#else	/* !_WIN32  */
-
-char *
-_rl_get_user_registry_string (char *keyName, char* valName)
-{
-  char *result = NULL;
-  HKEY	subKey;
-  if ( keyName && (RegOpenKeyEx(HKEY_CURRENT_USER, keyName, 0, KEY_READ, &subKey)
-                   == ERROR_SUCCESS) )
-    {
-      DWORD type;
-      char *chtry = NULL;
-      DWORD bufSize = 0;
-
-      if ( (RegQueryValueExA(subKey, valName, NULL, &type, chtry, &bufSize)
-	    == ERROR_SUCCESS) && (type == REG_SZ) )
-        {
-	  if ( (chtry = (char *)xmalloc(bufSize))
-	       && (RegQueryValueExA(subKey, valName, NULL, &type, chtry, &bufSize)
-		   == ERROR_SUCCESS) )
-	    result = chtry;
-        }
-    }
-  return result;
-}
 #endif	/* !_WIN32  */
