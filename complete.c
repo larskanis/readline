@@ -2285,12 +2285,22 @@ rl_username_completion_function (text, state)
      const char *text;
      int state;
 {
+  static char *username = (char *)NULL;
+#ifndef _WIN32
+  static struct passwd *entry;
+#else
+  char user_name[128];
+  unsigned user_len;
+#endif
+  static int namelen, first_char, first_char_loc;
+  char *value;
+
 #if defined (__OPENNT)
   return (char *)NULL;
 #elif defined (_WIN32)
   if (GetUserName (user_name, &user_len))
     {
-      if (namelen == 0 || (!strnicmp (username, user_name, name_len)))
+      if (namelen == 0 || (!strnicmp (username, user_name, namelen)))
 	{
 	  value = (char *)xmalloc (2 + strlen (user_name));
 	  *value = *text;
@@ -2302,15 +2312,6 @@ rl_username_completion_function (text, state)
     }
   return ((char *)NULL);
 #else /* !__WIN32__ && !__OPENNT) */
-  static char *username = (char *)NULL;
-#ifndef _WIN32
-  static struct passwd *entry;
-#else
-  char user_name[128];
-  unsigned user_len;
-#endif
-  static int namelen, first_char, first_char_loc;
-  char *value;
 
   if (state == 0)
     {
