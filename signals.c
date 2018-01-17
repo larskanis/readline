@@ -117,6 +117,9 @@ static int signals_set_flag;
 static int sigwinch_set_flag;
 #endif
 
+_rl_sigcleanup_func_t *_rl_sigcleanup;
+void *_rl_sigcleanarg;
+
 #if !defined (_WIN32)
 /* **************************************************************** */
 /*					        		    */
@@ -131,9 +134,6 @@ static sighandler_cxt old_tstp, old_ttou, old_ttin;
 #if defined (SIGWINCH)
 static sighandler_cxt old_winch;
 #endif
-
-_rl_sigcleanup_func_t *_rl_sigcleanup;
-void *_rl_sigcleanarg;
 
 /* Readline signal handler functions. */
 
