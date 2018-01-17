@@ -356,7 +356,7 @@ tilde_expand_word (filename)
   struct passwd *user_entry;
 #else /* _WIN32 */
   char UserName[256];
-  unsigned long UserLen = 256;
+  DWORD UserLen = 256;
 #endif /* _WIN32 */
 
   if (filename == 0)
@@ -436,7 +436,7 @@ tilde_expand_word (filename)
   endpwent ();
 #endif
 #else /* _WIN32 */
-  if (GetUserName (UserName, &UserLen))
+  if (GetUserNameA (UserName, &UserLen))
     {
       if (!stricmp (username, UserName))
 	dirname = glue_prefix_and_suffix (sh_get_home_dir (), filename, user_len);

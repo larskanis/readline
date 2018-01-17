@@ -2290,7 +2290,7 @@ rl_username_completion_function (text, state)
   static struct passwd *entry;
 #else
   char user_name[128];
-  unsigned user_len;
+  DWORD user_len;
 #endif
   static int namelen, first_char, first_char_loc;
   char *value;
@@ -2298,7 +2298,7 @@ rl_username_completion_function (text, state)
 #if defined (__OPENNT)
   return (char *)NULL;
 #elif defined (_WIN32)
-  if (GetUserName (user_name, &user_len))
+  if (GetUserNameA (user_name, &user_len))
     {
       if (namelen == 0 || (!strnicmp (username, user_name, namelen)))
 	{
