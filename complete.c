@@ -2501,15 +2501,7 @@ rl_filename_completion_function (text, state)
      const char *text;
      int state;
 {
-#ifdef _WIN32
-  static WIN32_FIND_DATA entry;
-  static HANDLE directory = NULL;
-  static BOOL found = 0;
-  char tmp[MAX_PATH];
-# define DIR void
-#else
   static DIR *directory = (DIR *)NULL;
-#endif
   static char *filename = (char *)NULL;
   static char *dirname = (char *)NULL;
   static char *users_dirname = (char *)NULL;
@@ -2605,18 +2597,7 @@ rl_filename_completion_function (text, state)
 	  xfree (dirname);
 	  dirname = savestring (users_dirname);
 	}
-#ifdef _WIN32
-      strcpy (tmp, dirname);
-      if (tmp[strlen (tmp) - 1] == '/')
-	strcat (tmp, "*");
-      else
-	strcat (tmp, "/*");
-
-      directory = FindFirstFile (tmp, &entry);
-      found = 1;
-#else
       directory = opendir (dirname);
-#endif
 
       /* Now dequote a non-null filename.  FILENAME will not be NULL, but may
 	 be empty. */
@@ -2639,12 +2620,9 @@ rl_filename_completion_function (text, state)
   /* *** UNIMPLEMENTED *** */
 
   /* Now that we have some state, we can read the directory. */
-#ifndef _WIN32
+
   entry = (struct dirent *)NULL;
   while (directory && (entry = readdir (directory)))
-#else
-  while (directory != INVALID_HANDLE_VALUE && directory && found)
-#endif
     {
       convfn = dentry = entry->d_name;
       convlen = dentlen = D_NAMLEN (entry);
@@ -2673,15 +2651,8 @@ rl_filename_completion_function (text, state)
 	    break;
 	}
     }
-#ifdef _WIN32
-      found = FindNextFile (directory, &entry);
-#endif
 
-#ifdef _WIN32
-  if (!found)
-#else
   if (entry == 0)
-#endif
     {
       if (directory)
 	{
@@ -2742,9 +2713,6 @@ rl_filename_completion_function (text, state)
       if (convfn != dentry)
 	xfree (convfn);
 
-#ifdef _WIN32
-      found = FindNextFile (directory, &entry);
-#endif
       return (temp);
     }
 }
