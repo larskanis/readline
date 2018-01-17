@@ -2058,7 +2058,7 @@ rl_clear_visible_line ()
   int curr_line;
 
   /* Make sure we move to column 0 so we clear the entire line */
-#if defined (__MSDOS__)
+#if defined (__MSDOS__) || defined (_WIN32)
   putc ('\r', rl_outstream);
 #else
   tputs (_rl_term_cr, 1, _rl_output_character_function);
