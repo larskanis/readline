@@ -154,8 +154,13 @@ _rl_init_eightbit ()
       return (1);
     }
   else
-#endif
     return (0);
+#else
+  _rl_meta_flag = 1;
+  _rl_convert_meta_chars_to_ascii = 0;
+  _rl_output_meta_chars = 1;
+  return (1);
+#endif
 
 #else /* !HAVE_SETLOCALE */
   char *lspec, *t;

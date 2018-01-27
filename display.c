@@ -2180,15 +2180,8 @@ _rl_move_cursor_relative (new, data)
      const char *data;
 {
 #ifdef _WIN32
-  CONSOLE_SCREEN_BUFFER_INFO     csbi;
-  if ( (_rl_last_c_pos != new)
-       && haveConsole && GetConsoleScreenBufferInfo(hStdout, &csbi) )
-    {
-      csbi.dwCursorPosition.X += new - _rl_last_c_pos;
-      if ( SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition) )
-   _rl_last_c_pos = new;
-    }
-#else /* _WIN32 */
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+#endif
   register int i;
   int woff;			/* number of invisible chars on current line */
   int cpos, dpos;		/* current and desired cursor positions */
@@ -2271,6 +2264,15 @@ _rl_move_cursor_relative (new, data)
   /* If we don't have to do anything, then return. */
   if (cpos == dpos)
     return;
+
+#ifdef _WIN32
+  if ( haveConsole && GetConsoleScreenBufferInfo(hStdout, &csbi) )
+    {
+      csbi.dwCursorPosition.X += dpos - cpos;
+      if ( SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition) )
+        _rl_last_c_pos = dpos;
+    }
+#else /* _WIN32 */
 
   /* It may be faster to output a CR, and then move forwards instead
      of moving backwards. */

@@ -61,6 +61,8 @@
 #if defined (HANDLE_MULTIBYTE)
 int rl_byte_oriented = 0;
 #else
+#error "Windows port is expected to use UTF-8 encoding, but not all \
+        dependencies for multibyte support are available."
 int rl_byte_oriented = 1;
 #endif
 
@@ -74,6 +76,270 @@ int _rl_utf8locale = 0;
 /* **************************************************************** */
 
 #if defined(HANDLE_MULTIBYTE)
+
+#if defined (_WIN32)
+
+/* wctomb functions were derived from mingw-w64-crt sources:
+ * https://github.com/Alexpux/mingw-w64/blob/master/mingw-w64-crt/misc/wcrtomb.c
+ */
+static int
+ __wcrtomb_utf8 (char *dst, wchar_t wc, const unsigned int mb_max)
+{
+  int invalid_char = 0;
+
+  int size = WideCharToMultiByte (CP_UTF8, 0,
+                                  &wc, 1, dst, mb_max,
+                                  NULL, &invalid_char);
+  if (size == 0 || invalid_char)
+    {
+      errno = EILSEQ;
+      return -1;
+    }
+  return size;
+}
+
+size_t
+_rl_utf8_wcrtomb (char *dst, wchar_t wc, mbstate_t *ps)
+{
+  char byte_bucket [MB_LEN_MAX];
+  char* tmp_dst = dst ? dst : &byte_bucket[0];
+fprintf(stderr, "_rl_utf8_wcrtomb\n");
+  return (size_t)__wcrtomb_utf8 (tmp_dst, wc, MB_CUR_MAX);
+}
+
+size_t _rl_utf8_wcsrtombs (char *dst, const wchar_t **src, size_t len,
+		  mbstate_t *ps)
+{
+  int ret = 0;
+  size_t n = 0;
+  const unsigned int mb_max = MB_CUR_MAX;
+  const wchar_t *pwc = *src;
+
+fprintf(stderr, "_rl_utf8_wcsrtombs\n");
+  if (src == NULL || *src == NULL) /* undefined behavior */
+    return 0;
+
+  if (dst != NULL)
+    {
+      while (n < len)
+	{
+	  if ((ret = __wcrtomb_utf8 (dst, *pwc, mb_max)) <= 0)
+	    return (size_t) -1;
+	  n += ret;
+	  dst += ret;
+	  if (*(dst - 1) == '\0')
+	    {
+	      *src = (wchar_t *) NULL;
+	      return (n  - 1);
+	    }
+	  pwc++;
+	}
+      *src = pwc;
+    }
+  else
+    {
+      char byte_bucket [MB_LEN_MAX];
+      while (1)
+	{
+	  if ((ret = __wcrtomb_utf8 (&byte_bucket[0], *pwc, mb_max)) <= 0)
+	    return (size_t) -1;
+	  n += ret;
+	  if (byte_bucket [ret - 1] == '\0')
+	    return (n - 1);
+	  pwc++;
+	}
+    }
+
+  return n;
+}
+
+
+/* mbtowc functions were derived from mingw-w64-crt sources:
+ * https://github.com/Alexpux/mingw-w64/blob/master/mingw-w64-crt/misc/mbrtowc.c
+ */
+static int
+__mbrtowc_utf8 (wchar_t * pwc, const char * s,
+	      size_t n, mbstate_t* ps,
+	      const unsigned int mb_max)
+{
+  union {
+    mbstate_t val;
+    char mbcs[4];
+  } shift_state;
+
+  /* Do the prelim checks */
+  if (s == NULL)
+    return 0;
+
+  if (n == 0)
+    /* The standard doesn't mention this case explicitly. Tell
+       caller that the conversion from a non-null s is incomplete. */
+    return -2;
+
+  /* Save the current shift state, in case we need it in DBCS case.  */
+  shift_state.val = *ps;
+  *ps = 0;
+
+  if (!*s)
+    {
+      *pwc = 0;
+      return 0;
+    }
+
+  if (mb_max > 1)
+    {
+      if (shift_state.mbcs[0] != 0)
+	{
+	  /* Complete the mb char with the trailing byte.  */
+	  shift_state.mbcs[1] = *s;  /* the second byte */
+	  if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+				  shift_state.mbcs, 2, pwc, 1)
+		 == 0)
+	    {
+	      /* An invalid trailing byte */
+	      errno = EILSEQ;
+	      return -1;
+	    }
+	  return 2;
+	}
+      else if (*(unsigned char*)s >= 0xC2 && *(unsigned char*)s <= 0xF4) /* Start of a 2, 3 or 4 byte UTF-8 sequence? */
+	{
+	  /* If told to translate one byte, just save the leadbyte
+	     in *ps.  */
+	  if (n < 2)
+	    {
+	      ((char*) ps)[0] = *s;
+	      return -2;
+	    }
+	  /* Else translate the first two bytes  */
+	  else if (MultiByteToWideChar (CP_UTF8, MB_ERR_INVALID_CHARS,
+					s, 2, pwc, 1)
+		    == 0)
+	    {
+	      errno = EILSEQ;
+	      return -1;
+	    }
+	  return 2;
+	}
+    }
+
+  if (MultiByteToWideChar (CP_UTF8, MB_ERR_INVALID_CHARS, s, 1, pwc, 1)
+	    == 0)
+    {
+      errno = EILSEQ;
+      return  -1;
+    }
+
+  return 1;
+}
+
+size_t
+_rl_utf8_mbrtowc (wchar_t * pwc, const char * s,
+	 size_t n, mbstate_t* ps)
+{
+  static mbstate_t internal_mbstate = 0;
+  wchar_t  byte_bucket = 0;
+  wchar_t* dst = pwc ? pwc : &byte_bucket;
+
+  size_t r = __mbrtowc_utf8 (dst, s, n, ps ? ps : &internal_mbstate, MB_CUR_MAX);
+// fprintf(stderr, "_rl_utf8_mbrtowc mb %d: %d %d wc:%d ret: %d\n", (int)n, (int)s[0], (int)s[1], (int)pwc[0], r);
+return r;
+}
+
+
+size_t
+_rl_utf8_mbsrtowcs (wchar_t* dst,  const char ** src,
+	   size_t len, mbstate_t* ps)
+{
+  int ret =0 ;
+  size_t n = 0;
+  static mbstate_t internal_mbstate = 0;
+  mbstate_t* internal_ps = ps ? ps : &internal_mbstate;
+  const unsigned int mb_max = MB_CUR_MAX;
+// fprintf(stderr, "_rl_utf8_mbsrtowcs\n");
+
+  if (src == NULL || *src == NULL)	/* undefined behavior */
+    return 0;
+
+  if (dst != NULL)
+    {
+      while (n < len
+	     && (ret = __mbrtowc_utf8(dst, *src, len - n,
+				    internal_ps, mb_max))
+		  > 0)
+	{
+	  ++dst;
+	  *src += ret;
+	  n += ret;
+	}
+
+      if (n < len && ret == 0)
+	*src = (char *)NULL;
+    }
+  else
+    {
+      wchar_t byte_bucket = 0;
+      while ((ret = __mbrtowc_utf8 (&byte_bucket, *src, mb_max,
+				     internal_ps, mb_max))
+		  > 0)
+	{
+	  *src += ret;
+	  n += ret;
+	}
+    }
+  return n;
+}
+
+size_t
+_rl_utf8_mbrlen (const char * s, size_t n,
+	mbstate_t * ps)
+{
+  static mbstate_t s_mbstate = 0;
+  wchar_t byte_bucket = 0;
+
+  size_t r = __mbrtowc_utf8 (&byte_bucket, s, n, (ps) ? ps : &s_mbstate, MB_CUR_MAX);
+// fprintf(stderr, "_rl_utf8_mbrlen %d: %d %d ret: %d\n", n, (int)s[0], (int)s[1], (int)r);
+  return r;
+}
+
+struct interval {
+  int first;
+  int last;
+  int width;
+};
+
+/* auxiliary function for binary search in interval table */
+static int bisearch(wchar_t ucs, const struct interval *table, int max) {
+  int min = 0;
+  int mid;
+
+  if (ucs < table[0].first || ucs > table[max].last)
+    return -1;
+  while (max >= min) {
+    mid = (min + max) / 2;
+    if (ucs > table[mid].last)
+      min = mid + 1;
+    else if (ucs < table[mid].first)
+      max = mid - 1;
+    else
+      return table[mid].width;
+  }
+
+  return -1;
+}
+
+int
+_rl_wcwidth_win32 (wchar_t wc)
+{
+  /* sorted list of non-overlapping intervals of non-spacing characters */
+#include "win32/windows_wcwidths.inc"
+
+  /* binary search in table of non-spacing characters */
+  return bisearch(wc, widths,
+	       sizeof(widths) / sizeof(struct interval) - 1);
+}
+
+#endif
 
 static int
 _rl_find_next_mbchar_internal (string, seed, count, find_non_zero)

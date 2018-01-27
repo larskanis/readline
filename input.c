@@ -247,13 +247,6 @@ rl_gather_tyi ()
     }
 #endif /* O_NDELAY */
 
-#if defined (__MINGW32__)
-  /* Use getch/_kbhit to check for available console input, in the same way
-     that we read it normally. */
-   chars_avail = isatty (tty) ? _kbhit () : 0;
-   result = 0;
-#endif
-
   /* If there's nothing available, don't waste time trying to read
      something. */
   if (chars_avail <= 0)
@@ -511,10 +504,6 @@ rl_getc (stream)
 
       /* We know at this point that _rl_caught_signal == 0 */
 
-#if defined (__MINGW32__)
-      if (isatty (fileno (stream)))
-	return (_getch ());	/* "There is no error return." */
-#endif
       result = 0;
 #if defined (HAVE_PSELECT)
       sigemptyset (&empty_set);
@@ -617,10 +606,6 @@ handle_error:
 #define KEV	   irec.Event.KeyEvent			/* to make life easier  */
 #define KST	   irec.Event.KeyEvent.dwControlKeyState
 
-static int pending_key = 0;
-static int pending_count = 0;
-static int pending_prefix = 0;
-
 extern int _rl_last_c_pos;	/* imported from display.c  */
 extern int _rl_last_v_pos;
 extern int rl_dispatching;	/* imported from readline.c  */
@@ -638,30 +623,50 @@ static void MouseEventProc(MOUSE_EVENT_RECORD kev);
 int rl_getc (stream)
      FILE *stream;
 {
-  if ( pending_count )
-    {
-      --pending_count;
-      if ( pending_prefix && (pending_count & 1) )
-        return pending_prefix;
-      else
-        return pending_key;
-    }
+  static char pending_chars[5];
+  static int pending_chars_count = 0;
+  static int pending_chars_idx = 0;
+  static int pending_repeat_count = 0;
 
   while ( 1 )
     {
       DWORD dummy;
+      INPUT_RECORD irec;
+
+      if ( pending_repeat_count > 0 && pending_chars_idx == pending_chars_count )
+        {
+          --pending_repeat_count;
+          pending_chars_idx = 0;
+        }
+
+      if ( pending_chars_idx < pending_chars_count )
+        {
+          /* Is it the last pending UTF-8 byte to be delivered? */
+          if ( pending_repeat_count == 0 &&
+              pending_chars_idx+1 >= pending_chars_count )
+          {
+            /* Then remove this character from the input buffer. */
+            ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+          }
+
+//           fprintf(stderr, "char: %d %c\n", (int)(unsigned char)pending_chars[pending_chars_idx], pending_chars[pending_chars_idx]);
+          return ((unsigned char*)pending_chars)[pending_chars_idx++];
+        }
 
       if (WaitForSingleObject(hStdin, WAIT_FOR_INPUT) != WAIT_OBJECT_0)
         {
           if ( rl_done )
-            return( 0 );
+            return 0;
           else
             continue;
         }
+
       if ( haveConsole & FOR_INPUT )
         {
-          INPUT_RECORD irec;
-          ReadConsoleInput (hStdin, &irec, 1, &dummy);
+          /* Read but don't remove input characters from input buffer.
+           * This ensures, that rl_getc() is repeatedly called until all
+           * pending UTF-8 bytes were returned. */
+          PeekConsoleInputW (hStdin, &irec, 1, &dummy);
           switch(irec.EventType)
             {
             case KEY_EVENT:
@@ -669,58 +674,91 @@ int rl_getc (stream)
                   ((KEV.wVirtualKeyCode < VK_SHIFT) ||
                    (KEV.wVirtualKeyCode > VK_MENU)))
                 {
-                  pending_count = KEV.wRepeatCount;
-                  pending_prefix = 0;
-                  pending_key = KEV.uChar.AsciiChar & 0xff;
+                  wchar_t wkey[2]; /* UTF-16 contains 1 or 2 words */
+                  int mbsize;
+                  pending_repeat_count = KEV.wRepeatCount;
+                  pending_chars_idx = 0;
+                  pending_chars_count = 0;
+
+                  if (KST & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED))
+                    {
+                      pending_chars[0] = VK_ESCAPE;
+                      pending_chars_count++;
+                    }
 
                   if (KST & ENHANCED_KEY)
                     {
+                      char key = 0;
 #define CTRL_TO_ASCII(c) ((c) - 'a' + 1)
                       switch (KEV.wVirtualKeyCode)
                         {
                           case VK_HOME:
-                            pending_key = CTRL_TO_ASCII ('a');
+                            key = CTRL_TO_ASCII ('a');
                             break;
                           case VK_END:
-                            pending_key = CTRL_TO_ASCII ('e');
+                            key = CTRL_TO_ASCII ('e');
                             break;
                           case VK_LEFT:
-                            pending_key = CTRL_TO_ASCII ('b');
+                            key = CTRL_TO_ASCII ('b');
                             break;
                           case VK_RIGHT:
-                            pending_key = CTRL_TO_ASCII ('f');
+                            key = CTRL_TO_ASCII ('f');
                             break;
                           case VK_UP:
-                            pending_key = CTRL_TO_ASCII ('p');
+                            key = CTRL_TO_ASCII ('p');
                             break;
                           case VK_DOWN:
-                            pending_key = CTRL_TO_ASCII ('n');
+                            key = CTRL_TO_ASCII ('n');
                             break;
                           case VK_DELETE:
-                            pending_key = CTRL_TO_ASCII ('d');
+                            key = CTRL_TO_ASCII ('d');
                             break;
                         }
+                      if ( key )
+                        {
+                          pending_chars[0] = key;
+                          pending_chars_count++;
+                        }
                     }
-
-                  if (KST & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED))
-                    pending_prefix = VK_ESCAPE;
-
-                  if (pending_prefix)
-                      pending_count = (pending_count << 1) - 1;
-
-                  /* Ascii direct */
-                  if (pending_key)
-                      pending_count--;
-
-                  if (pending_prefix)
-                    return pending_prefix;
-                  return pending_key;
+                  else
+                    {
+                      wkey[0] = KEV.uChar.UnicodeChar;
+                      if (wkey[0] >= 0xD800 && wkey[0] <= 0xDBFF)
+                        {
+                          /* 4 byte UTF-16 character */
+                          ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+                          PeekConsoleInputW (hStdin, &irec, 1, &dummy);
+                          wkey[1] = KEV.uChar.UnicodeChar;
+                          mbsize = WideCharToMultiByte (CP_UTF8, 0,
+                                      &wkey[0], 2,
+                                      &pending_chars[pending_chars_count],
+                                      sizeof(pending_chars) - pending_chars_count,
+                                      NULL, NULL);
+                          pending_chars_count += mbsize;
+                        }
+                      else
+                        {
+                          /* 2 byte UTF-16 character */
+                          mbsize = WideCharToMultiByte (CP_UTF8, 0,
+                                      &wkey[0], 1,
+                                      &pending_chars[pending_chars_count],
+                                      sizeof(pending_chars) - pending_chars_count,
+                                      NULL, NULL);
+                          pending_chars_count += mbsize;
+                        }
+                    }
+                  pending_chars_idx = pending_chars_count;
+                  continue;
                 }
+              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
               break;
             case MOUSE_EVENT:
+              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
               if ( (haveConsole & FOR_OUTPUT) && !rl_dispatching )
                 MouseEventProc(irec.Event.MouseEvent);
+              break;
             default:
+              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
               break;
             }
         }

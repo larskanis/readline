@@ -43,7 +43,7 @@
       defined (HAVE_TOWLOWER) && \
       defined (HAVE_TOWUPPER) && \
       defined (HAVE_WCHAR_T) && \
-      defined (HAVE_WCWIDTH)
+      (defined (HAVE_WCWIDTH) || defined (_WIN32))
      /* system is supposed to support XPG5 */
 #    define HANDLE_MULTIBYTE      1
 #  endif
@@ -55,8 +55,37 @@
 #  undef HANDLE_MULTIBYTE
 #endif
 
+#if HANDLE_MULTIBYTE && defined (_WIN32)
+/* Windows console supports UTF-16 input and UCS-2 output, regardless of the
+ * locale setting. Therefore use multibyte conversions functions which are
+ * independent from the locale setting. */
+
+#include <windows.h>
+#include <errno.h>
+
+extern size_t _rl_utf8_wcsrtombs PARAMS((char *dst, const wchar_t **src, size_t len,
+      mbstate_t * ps));
+extern size_t _rl_utf8_mbsrtowcs PARAMS((wchar_t* dst,  const char ** src,
+      size_t len, mbstate_t* ps));
+extern size_t _rl_utf8_wcrtomb PARAMS((char *dst, wchar_t wc, mbstate_t * ps));
+extern size_t _rl_utf8_mbrtowc PARAMS((wchar_t * pwc, const char * s, size_t n,
+      mbstate_t* ps));
+extern size_t _rl_utf8_mbrlen PARAMS((const char * s, size_t n, mbstate_t * ps));
+extern int _rl_wcwidth_win32 PARAMS((wchar_t wc));
+
+#  define wcsrtombs(dest, src, len, ps) (_rl_utf8_wcsrtombs) (dest, src, len, ps)
+#  define mbsrtowcs(dest, src, len, ps) (_rl_utf8_mbsrtowcs) (dest, src, len, ps)
+#  define wcrtomb(s, wc, ps) (_rl_utf8_wcrtomb) (s, wc, ps)
+#  define mbrtowc(pwc, s, n, ps) (_rl_utf8_mbrtowc) (pwc, s, n, ps)
+#  define mbrlen(s, n, ps) (_rl_utf8_mbrlen) (s, n, ps)
+
+#undef MB_CUR_MAX
+#define MB_CUR_MAX 4
+#endif
+
+
 /* Some systems, like BeOS, have multibyte encodings but lack mbstate_t.  */
-#if HANDLE_MULTIBYTE && !defined (HAVE_MBSTATE_T)
+#if HANDLE_MULTIBYTE && !defined (HAVE_MBSTATE_T) && !defined (_WIN32)
 #  define wcsrtombs(dest, src, len, ps) (wcsrtombs) (dest, src, len, 0)
 #  define mbsrtowcs(dest, src, len, ps) (mbsrtowcs) (dest, src, len, 0)
 #  define wcrtomb(s, wc, ps) (wcrtomb) (s, wc, 0)
@@ -153,7 +182,11 @@ _rl_wcwidth (wc)
     case 'z': case '{': case '|': case '}': case '~':
       return 1;
     default:
+#if defined (_WIN32)
+      return _rl_wcwidth_win32 (wc);
+#else
       return wcwidth (wc);
+#endif
     }
 }
 

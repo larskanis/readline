@@ -755,16 +755,36 @@ _rl_output_some_chars (string, count)
      int count;
 {
   CONSOLE_SCREEN_BUFFER_INFO	csbi;
-  fwrite (string, 1, count, _rl_out_stream);
-  if ( (haveConsole & FOR_OUTPUT) && GetConsoleScreenBufferInfo(hStdout, &csbi) )
+  if (haveConsole & FOR_OUTPUT)
     {
-      int linear_pos = (int)csbi.dwCursorPosition.Y * (int)csbi.dwSize.X
-			+ (int)csbi.dwCursorPosition.X;
-      if (linear_pos > rlScreenMax)
+      wchar_t *wstr = (wchar_t *)xmalloc(count * 2); /* UTF-16 takes max twice the size of UTF-8 */
+
+      int wsize = MultiByteToWideChar (CP_UTF8, 0,
+                  string, count,
+                  wstr, count * 2);
+
+      if ( wsize > 0 )
         {
-          rlScreenEnd = csbi.dwCursorPosition;
-          rlScreenMax = linear_pos;
+          DWORD written;
+          WriteConsoleW(hStdout, wstr, wsize, &written, NULL);
+
+          if ( GetConsoleScreenBufferInfo(hStdout, &csbi) )
+            {
+              int linear_pos = (int)csbi.dwCursorPosition.Y * (int)csbi.dwSize.X
+              + (int)csbi.dwCursorPosition.X;
+              if (linear_pos > rlScreenMax)
+                {
+                  rlScreenEnd = csbi.dwCursorPosition;
+                  rlScreenMax = linear_pos;
+                }
+            }
         }
+
+      xfree(wstr);
+    }
+  else
+    {
+      fwrite (string, 1, count, _rl_out_stream);
     }
 }
 
