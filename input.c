@@ -623,14 +623,14 @@ static void MouseEventProc(MOUSE_EVENT_RECORD kev);
 int rl_getc (stream)
      FILE *stream;
 {
-  static char pending_chars[5];
+  static char pending_chars[5]; /* max 1 escape and 4 UTF-8 bytes */
   static int pending_chars_count = 0;
   static int pending_chars_idx = 0;
   static int pending_repeat_count = 0;
 
   while ( 1 )
     {
-      DWORD dummy;
+      DWORD number_of_events_read;
       INPUT_RECORD irec;
 
       if ( pending_repeat_count > 0 && pending_chars_idx == pending_chars_count )
@@ -646,7 +646,7 @@ int rl_getc (stream)
               pending_chars_idx+1 >= pending_chars_count )
           {
             /* Then remove this character from the input buffer. */
-            ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+            ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
           }
 
 //           fprintf(stderr, "char: %d %c\n", (int)(unsigned char)pending_chars[pending_chars_idx], pending_chars[pending_chars_idx]);
@@ -666,7 +666,7 @@ int rl_getc (stream)
           /* Read but don't remove input characters from input buffer.
            * This ensures, that rl_getc() is repeatedly called until all
            * pending UTF-8 bytes were returned. */
-          PeekConsoleInputW (hStdin, &irec, 1, &dummy);
+          PeekConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
           switch(irec.EventType)
             {
             case KEY_EVENT:
@@ -725,9 +725,13 @@ int rl_getc (stream)
                       wkey[0] = KEV.uChar.UnicodeChar;
                       if (wkey[0] >= 0xD800 && wkey[0] <= 0xDBFF)
                         {
-                          /* 4 byte UTF-16 character */
-                          ReadConsoleInputW (hStdin, &irec, 1, &dummy);
-                          PeekConsoleInputW (hStdin, &irec, 1, &dummy);
+                          /* 4 byte UTF-16 character are delivered as two key strokes */
+                          /* Pull key-down of low surrogate wchar from input buffer */
+                          ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
+                          /* Pull key-up of low surrogate wchar from input buffer */
+                          ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
+                          /* Peek key-down of high surrogate wchar from input buffer */
+                          PeekConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
                           wkey[1] = KEV.uChar.UnicodeChar;
                           mbsize = WideCharToMultiByte (CP_UTF8, 0,
                                       &wkey[0], 2,
@@ -750,22 +754,22 @@ int rl_getc (stream)
                   pending_chars_idx = pending_chars_count;
                   continue;
                 }
-              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+              ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
               break;
             case MOUSE_EVENT:
-              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+              ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
               if ( (haveConsole & FOR_OUTPUT) && !rl_dispatching )
                 MouseEventProc(irec.Event.MouseEvent);
               break;
             default:
-              ReadConsoleInputW (hStdin, &irec, 1, &dummy);
+              ReadConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
               break;
             }
         }
       else
         {
           int key;
-          ReadFile(hStdin, &key, 1, &dummy, NULL);
+          ReadFile(hStdin, &key, 1, &number_of_events_read, NULL);
           return key;
         }
     }
