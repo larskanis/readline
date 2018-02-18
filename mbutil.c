@@ -302,41 +302,85 @@ _rl_utf8_mbrlen (const char * s, size_t n,
   return r;
 }
 
-struct interval {
-  int first;
-  int last;
-  int width;
-};
+static size_t _rl_wcwidth_next_memsize (size_t idx)
+{
+  unsigned int r = 8;
 
-/* auxiliary function for binary search in interval table */
-static int bisearch(wchar_t ucs, const struct interval *table, int max) {
-  int min = 0;
-  int mid;
-
-  if (ucs < table[0].first || ucs > table[max].last)
-    return -1;
-  while (max >= min) {
-    mid = (min + max) / 2;
-    if (ucs > table[mid].last)
-      min = mid + 1;
-    else if (ucs < table[mid].first)
-      max = mid - 1;
-    else
-      return table[mid].width;
+  while ((idx >>= 1) >= 0x80) {
+    r++;
   }
-
-  return -1;
+  return 1 << r;
 }
 
 int
 _rl_wcwidth_win32 (wchar_t wc)
 {
-  /* sorted list of non-overlapping intervals of non-spacing characters */
-#include "win32/windows_wcwidths.inc"
+  static HANDLE hidden_console = NULL;
+  static char *pwcwidths = NULL;
+  static size_t wcwidths_size = 0;
+  size_t idx = (size_t)wc;
+  char width;
 
-  /* binary search in table of non-spacing characters */
-  return bisearch(wc, widths,
-	       sizeof(widths) / sizeof(struct interval) - 1);
+  if (!pwcwidths)
+  {
+    /* Allocate cache for storing widths of each wide char */
+    wcwidths_size = _rl_wcwidth_next_memsize(idx);
+    pwcwidths = xmalloc (wcwidths_size * sizeof(char));
+    if( pwcwidths == NULL )
+      return -1;
+    memset (pwcwidths, -1, wcwidths_size * sizeof(char));
+  }
+  else if(wcwidths_size <= idx)
+  {
+    /* Enlarge cache to the next power of two based on the current character */
+    size_t wcwidths_size_new = _rl_wcwidth_next_memsize(idx);
+    pwcwidths = xrealloc (pwcwidths, wcwidths_size_new * sizeof(char));
+    if( pwcwidths == NULL )
+      return -1;
+    memset (pwcwidths + (wcwidths_size * sizeof(char)), -1, (wcwidths_size_new - wcwidths_size) * sizeof(char));
+    wcwidths_size = wcwidths_size_new;
+  }
+
+  width = pwcwidths[idx];
+  if (width == -1)
+  {
+    /* Character is not yet in the cache -> measure it.
+     * Open a hidden console using same properties, print the
+     * character and measure the cursor position before and after. */
+    wchar_t wstr[1];
+    CONSOLE_SCREEN_BUFFER_INFO buffer_info1, buffer_info2;
+
+    if (!hidden_console)
+    {
+      hidden_console = CreateConsoleScreenBuffer(GENERIC_READ|GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+      if (!hidden_console)
+        return -1;
+    }
+
+    if (GetConsoleScreenBufferInfo(hidden_console, &buffer_info1) == 0)
+      return -1;
+    if (buffer_info1.dwCursorPosition.X >= buffer_info1.dwSize.X - 5)
+    {
+      /* Print \n to avoid line wraps at the right side of the console */
+      wchar_t wlf[] = L"\n";
+      WriteConsoleW(hidden_console, &wlf, sizeof(wlf)/sizeof(*wlf), NULL, NULL);
+      if (GetConsoleScreenBufferInfo(hidden_console, &buffer_info1) == 0)
+        return -1;
+    }
+
+    wstr[0] = wc;
+    WriteConsoleW(hidden_console, &wstr, sizeof(wstr)/sizeof(*wstr), NULL, NULL);
+
+    if (GetConsoleScreenBufferInfo(hidden_console, &buffer_info2) == 0)
+      return -1;
+
+    width = (char)(buffer_info2.dwCursorPosition.X - buffer_info1.dwCursorPosition.X);
+
+    pwcwidths[idx] = width;
+  }
+
+//   fprintf(stderr, "_rl_wcwidth_win32 %d ret: %d\n", (int)wc, (int)width);
+  return (int)width;
 }
 
 #endif
