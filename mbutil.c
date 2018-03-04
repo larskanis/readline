@@ -153,19 +153,28 @@ fprintf(stderr, "_rl_utf8_wcsrtombs\n");
   return n;
 }
 
+static int
+__utf8_seq_size(char first_byte)
+{
+  unsigned char b = (unsigned char)first_byte;
+  if (b >= 0x00 && b <= 0x7F) return 1;
+  if (b >= 0xC2 && b <= 0xDF) return 2;
+  if (b >= 0xE0 && b <= 0xEF) return 3;
+  if (b >= 0xF0 && b <= 0xF4) return 4;
+  return 0;
+}
+
 
 /* mbtowc functions were derived from mingw-w64-crt sources:
  * https://github.com/Alexpux/mingw-w64/blob/master/mingw-w64-crt/misc/mbrtowc.c
  */
 static int
 __mbrtowc_utf8 (wchar_t * pwc, const char * s,
-	      size_t n, mbstate_t* ps,
-	      const unsigned int mb_max)
+	      size_t n, mbstate_t* ps)
 {
-  union {
-    mbstate_t val;
-    char mbcs[4];
-  } shift_state;
+  int ret = 0;
+  int mbsize;
+  int psi;
 
   /* Do the prelim checks */
   if (s == NULL)
@@ -176,9 +185,6 @@ __mbrtowc_utf8 (wchar_t * pwc, const char * s,
        caller that the conversion from a non-null s is incomplete. */
     return -2;
 
-  /* Save the current shift state, in case we need it in DBCS case.  */
-  shift_state.val = *ps;
-  *ps = 0;
 
   if (!*s)
     {
@@ -186,51 +192,36 @@ __mbrtowc_utf8 (wchar_t * pwc, const char * s,
       return 0;
     }
 
-  if (mb_max > 1)
+  mbsize = __utf8_seq_size(
+	((unsigned char*) ps)[0] == 0 ?
+	((unsigned char*) s)[0] :
+	((unsigned char*) ps)[0] );
+
+  if (((unsigned char*) ps)[0] == 0) psi = 0;
+  else if (((unsigned char*) ps)[1] == 0) psi = 1;
+  else if (((unsigned char*) ps)[2] == 0) psi = 2;
+  else psi = 3;
+
+  while (n > 0)
     {
-      if (shift_state.mbcs[0] != 0)
+      ((char*) ps)[psi++] = *s++;
+      ret++;
+      n--;
+      if (psi >= mbsize)
 	{
-	  /* Complete the mb char with the trailing byte.  */
-	  shift_state.mbcs[1] = *s;  /* the second byte */
-	  if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-				  shift_state.mbcs, 2, pwc, 1)
-		 == 0)
+	  if (MultiByteToWideChar (CP_UTF8, MB_ERR_INVALID_CHARS,
+			(LPCCH)ps, mbsize, pwc, 2) == 0)
 	    {
-	      /* An invalid trailing byte */
+              *ps = 0;
 	      errno = EILSEQ;
 	      return -1;
 	    }
-	  return 2;
-	}
-      else if (*(unsigned char*)s >= 0xC2 && *(unsigned char*)s <= 0xF4) /* Start of a 2, 3 or 4 byte UTF-8 sequence? */
-	{
-	  /* If told to translate one byte, just save the leadbyte
-	     in *ps.  */
-	  if (n < 2)
-	    {
-	      ((char*) ps)[0] = *s;
-	      return -2;
-	    }
-	  /* Else translate the first two bytes  */
-	  else if (MultiByteToWideChar (CP_UTF8, MB_ERR_INVALID_CHARS,
-					s, 2, pwc, 1)
-		    == 0)
-	    {
-	      errno = EILSEQ;
-	      return -1;
-	    }
-	  return 2;
+	  *ps = 0;
+	  return ret;
 	}
     }
 
-  if (MultiByteToWideChar (CP_UTF8, MB_ERR_INVALID_CHARS, s, 1, pwc, 1)
-	    == 0)
-    {
-      errno = EILSEQ;
-      return  -1;
-    }
-
-  return 1;
+  return -2;
 }
 
 size_t
@@ -241,7 +232,7 @@ _rl_utf8_mbrtowc (wchar_t * pwc, const char * s,
   wchar_t  byte_bucket = 0;
   wchar_t* dst = pwc ? pwc : &byte_bucket;
 
-  size_t r = __mbrtowc_utf8 (dst, s, n, ps ? ps : &internal_mbstate, MB_CUR_MAX);
+  size_t r = __mbrtowc_utf8 (dst, s, n, ps ? ps : &internal_mbstate);
 // fprintf(stderr, "_rl_utf8_mbrtowc mb %d: %d %d wc:%d ret: %d\n", (int)n, (int)s[0], (int)s[1], (int)pwc[0], r);
 return r;
 }
@@ -264,8 +255,7 @@ _rl_utf8_mbsrtowcs (wchar_t* dst,  const char ** src,
   if (dst != NULL)
     {
       while (n < len
-	     && (ret = __mbrtowc_utf8(dst, *src, len - n,
-				    internal_ps, mb_max))
+	     && (ret = __mbrtowc_utf8(dst, *src, len - n, internal_ps))
 		  > 0)
 	{
 	  ++dst;
@@ -279,8 +269,7 @@ _rl_utf8_mbsrtowcs (wchar_t* dst,  const char ** src,
   else
     {
       wchar_t byte_bucket = 0;
-      while ((ret = __mbrtowc_utf8 (&byte_bucket, *src, mb_max,
-				     internal_ps, mb_max))
+      while ((ret = __mbrtowc_utf8 (&byte_bucket, *src, mb_max, internal_ps))
 		  > 0)
 	{
 	  *src += ret;
@@ -297,7 +286,7 @@ _rl_utf8_mbrlen (const char * s, size_t n,
   static mbstate_t s_mbstate = 0;
   wchar_t byte_bucket = 0;
 
-  size_t r = __mbrtowc_utf8 (&byte_bucket, s, n, (ps) ? ps : &s_mbstate, MB_CUR_MAX);
+  size_t r = __mbrtowc_utf8 (&byte_bucket, s, n, (ps) ? ps : &s_mbstate);
 // fprintf(stderr, "_rl_utf8_mbrlen %d: %d %d ret: %d\n", n, (int)s[0], (int)s[1], (int)r);
   return r;
 }
