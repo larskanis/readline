@@ -422,6 +422,28 @@ extern void rl_reset_screen_size PARAMS((void));
 
 extern char *rl_get_termcap PARAMS((const char *));
 
+/* Switch readline API to use UTF-8 instead of locale character encoding.
+ *
+ * This is only useful on Microsoft Windows, which doesn't support UTF-8 locale.
+ *
+ * enable=1 switchs readline to use the Windows Unicode API instead of using
+ * the locale codepage with limited character ranges.
+ * If enabled UTF-8 is used as character encoding for internal processing
+ * and for the readline API.
+ *
+ * enable=0 switchs readline to locale character encoding for internal
+ * processing and for the readline API.
+ * This is the default, when readline is started.
+ *
+ * Returns 1 on success and 0 on failure.
+ * In case of failure the locale encoding is used.
+ *
+ * Operating systems other than Windows return 1 (success) only when the locale
+ * character encoding is UTF-8. It's therefore safe to call rl_utf8_api(1),
+ * but doesn't change anything.
+ */
+extern int rl_utf8_api PARAMS((int enable));
+
 /* Functions for character input. */
 extern int rl_stuff_char PARAMS((int));
 extern int rl_execute_next PARAMS((int));

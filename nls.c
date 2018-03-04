@@ -286,3 +286,14 @@ find_codeset (name, lenp)
 
   return result;
 }
+
+int
+rl_utf8_api (int enable)
+  {
+#ifdef _WIN32
+    _rl_utf8locale = enable;
+    return 1;
+#else
+    return _rl_utf8locale;
+#endif
+  }
