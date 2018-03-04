@@ -2268,7 +2268,7 @@ _rl_move_cursor_relative (new, data)
 #ifdef _WIN32
   if ( haveConsole && GetConsoleScreenBufferInfo(hStdout, &csbi) )
     {
-      csbi.dwCursorPosition.X += dpos - cpos;
+      csbi.dwCursorPosition.X = dpos;
       if ( SetConsoleCursorPosition(hStdout, csbi.dwCursorPosition) )
         _rl_last_c_pos = dpos;
     }
