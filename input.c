@@ -680,7 +680,7 @@ int rl_getc (stream)
                   pending_chars_idx = 0;
                   pending_chars_count = 0;
 
-                  if (KST & (LEFT_ALT_PRESSED | RIGHT_ALT_PRESSED))
+                  if (KST & LEFT_ALT_PRESSED)
                     {
                       pending_chars[0] = VK_ESCAPE;
                       pending_chars_count++;
