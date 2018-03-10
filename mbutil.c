@@ -61,8 +61,10 @@
 #if defined (HANDLE_MULTIBYTE)
 int rl_byte_oriented = 0;
 #else
-#error "Windows port is expected to use UTF-8 encoding, but not all \
+# ifdef _WIN32
+#  error "Windows port is expected to use multibyte encoding, but not all \
         dependencies for multibyte support are available."
+# endif
 int rl_byte_oriented = 1;
 #endif
 
