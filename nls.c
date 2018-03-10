@@ -159,7 +159,7 @@ _rl_init_eightbit ()
   _rl_meta_flag = 1;
   _rl_convert_meta_chars_to_ascii = 0;
   _rl_output_meta_chars = 1;
-  return (1);
+  return (0);
 #endif
 
 #else /* !HAVE_SETLOCALE */
