@@ -290,6 +290,8 @@ find_codeset (name, lenp)
 int
 rl_utf8_api (int enable)
 {
+  rl_initialize();
+
   if (enable >= 0 && enable <= 1)
     {
 #ifdef _WIN32
