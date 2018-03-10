@@ -73,11 +73,11 @@ extern size_t _rl_utf8_mbrtowc PARAMS((wchar_t * pwc, const char * s, size_t n,
 extern size_t _rl_utf8_mbrlen PARAMS((const char * s, size_t n, mbstate_t * ps));
 extern int _rl_wcwidth_win32 PARAMS((wchar_t wc));
 
-#  define wcsrtombs(dest, src, len, ps) (_rl_utf8_wcsrtombs) (dest, src, len, ps)
-#  define mbsrtowcs(dest, src, len, ps) (_rl_utf8_mbsrtowcs) (dest, src, len, ps)
-#  define wcrtomb(s, wc, ps) (_rl_utf8_wcrtomb) (s, wc, ps)
-#  define mbrtowc(pwc, s, n, ps) (_rl_utf8_mbrtowc) (pwc, s, n, ps)
-#  define mbrlen(s, n, ps) (_rl_utf8_mbrlen) (s, n, ps)
+#  define wcsrtombs(dest, src, len, ps) (_rl_utf8locale ? _rl_utf8_wcsrtombs : wcsrtombs) (dest, src, len, ps)
+#  define mbsrtowcs(dest, src, len, ps) (_rl_utf8locale ? _rl_utf8_mbsrtowcs : mbsrtowcs) (dest, src, len, ps)
+#  define wcrtomb(s, wc, ps) (_rl_utf8locale ? _rl_utf8_wcrtomb : wcrtomb) (s, wc, ps)
+#  define mbrtowc(pwc, s, n, ps) (_rl_utf8locale ? _rl_utf8_mbrtowc : mbrtowc) (pwc, s, n, ps)
+#  define mbrlen(s, n, ps) (_rl_utf8locale ? _rl_utf8_mbrlen : mbrlen) (s, n, ps)
 
 #undef MB_CUR_MAX
 #define MB_CUR_MAX 4

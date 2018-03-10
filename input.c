@@ -733,23 +733,22 @@ int rl_getc (stream)
                           /* Peek key-down of high surrogate wchar from input buffer */
                           PeekConsoleInputW (hStdin, &irec, 1, &number_of_events_read);
                           wkey[1] = KEV.uChar.UnicodeChar;
-                          mbsize = WideCharToMultiByte (CP_UTF8, 0,
+                          mbsize = WideCharToMultiByte (_rl_utf8locale ? CP_UTF8 : GetConsoleCP(), 0,
                                       &wkey[0], 2,
                                       &pending_chars[pending_chars_count],
                                       sizeof(pending_chars) - pending_chars_count,
                                       NULL, NULL);
-                          pending_chars_count += mbsize;
                         }
                       else
                         {
                           /* 2 byte UTF-16 character */
-                          mbsize = WideCharToMultiByte (CP_UTF8, 0,
+                          mbsize = WideCharToMultiByte (_rl_utf8locale ? CP_UTF8 : GetConsoleCP(), 0,
                                       &wkey[0], 1,
                                       &pending_chars[pending_chars_count],
                                       sizeof(pending_chars) - pending_chars_count,
                                       NULL, NULL);
-                          pending_chars_count += mbsize;
                         }
+                        pending_chars_count += mbsize;
                     }
                   pending_chars_idx = pending_chars_count;
                   continue;

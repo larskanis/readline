@@ -759,7 +759,7 @@ _rl_output_some_chars (string, count)
     {
       wchar_t *wstr = (wchar_t *)xmalloc(count * 2); /* UTF-16 takes max twice the size of UTF-8 */
 
-      int wsize = MultiByteToWideChar (CP_UTF8, 0,
+      int wsize = MultiByteToWideChar (_rl_utf8locale ? CP_UTF8 : GetConsoleCP(), 0,
                   string, count,
                   wstr, count * 2);
 
