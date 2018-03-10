@@ -907,23 +907,6 @@ _rl_bind_tty_special_chars (kmap, ttybuff)
 
 #endif /* !NEW_TTY_DRIVER */
 
-/* Set the system's default editing characters to their readline equivalents
-   in KMAP.  Should be static, now that we have rl_tty_set_default_bindings. */
-void
-rltty_set_default_bindings (kmap)
-     Keymap kmap;
-{
-#if !defined (NO_TTY_DRIVER)
-  TIOTYPE ttybuff;
-  int tty;
-
-  tty = fileno (rl_instream);
-
-  if (get_tty_settings (tty, &ttybuff) == 0)
-    _rl_bind_tty_special_chars (kmap, ttybuff);
-#endif
-}
-
 #else /* __MING32__ */
 
 /* **************************************************************** */
@@ -947,30 +930,6 @@ COORD	rlScreenEnd;		/* end of line in frame buffer coordinates */
 int	rlScreenMax = 0;	/* end of line as linear frame buffer offset */
 
 static DWORD savedConsoleMode = 0;	/* to restore console on exit */
-
-void
-rltty_set_default_bindings (kmap)
-     Keymap kmap;
-{
-  /* I bet this is required on Win32 ;-) */
-  {
-    char buf[40]; strcpy(buf,"set bell-style none");
-    rl_parse_and_bind(buf);
-  }
-  rl_set_key ("\\M-\\�&", rl_get_previous_history, kmap);
-  rl_set_key ("\\M-\\�(", rl_get_next_history, kmap);
-  rl_set_key ("\\M-\\�'", rl_forward, kmap);
-  rl_set_key ("\\M-\\�%", rl_backward, kmap);
-
-  rl_set_key ("\\M-\\�$", rl_beg_of_line, kmap);
-  rl_set_key ("\\M-\\�#", rl_end_of_line, kmap);
-  rl_set_key ("\\M-\\�%", rl_backward_word, kmap);
-  rl_set_key ("\\M-\\�'", rl_forward_word, kmap);
-
-  rl_set_key ("\\M-\\�-", rl_paste_from_clipboard, kmap);
-  rl_set_key ("\\M-\\�.", rl_delete, kmap);
-  rl_set_key ("", rl_unix_word_rubout, kmap);
-}
 
 /* Query and set up a Window Console */
 
@@ -1032,6 +991,23 @@ rl_stop_output (count, key)
   return 0;
 }
 #endif /* _WIN32 */
+
+/* Set the system's default editing characters to their readline equivalents
+   in KMAP.  Should be static, now that we have rl_tty_set_default_bindings. */
+void
+rltty_set_default_bindings (kmap)
+     Keymap kmap;
+{
+#if !defined (NO_TTY_DRIVER)
+  TIOTYPE ttybuff;
+  int tty;
+
+  tty = fileno (rl_instream);
+
+  if (get_tty_settings (tty, &ttybuff) == 0)
+    _rl_bind_tty_special_chars (kmap, ttybuff);
+#endif
+}
 
 /* New public way to set the system default editing chars to their readline
    equivalents. */
